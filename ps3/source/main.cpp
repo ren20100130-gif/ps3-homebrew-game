@@ -108,7 +108,7 @@ int main(int argc, const char *argv[]) {
 
     game_init(&game);
     /* init_screen takes the host-memory pointer and size through its own API. */
-    init_screen(host_addr);
+    init_screen(host_addr, HOST_SIZE);
     ioPadInit(7);
     /* Audio is optional: keep the game running if audio initialization fails. */
     audio_voice_init();
