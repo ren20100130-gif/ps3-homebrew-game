@@ -88,14 +88,17 @@ void setRenderTarget(u32 index)
 	rsxSetSurface(context,&sf);
 }
 
-void init_screen(void *host_addr,u32 size)
+ s32 init_screen(void *host_addr,u32 size)
 {
-	rsxInit(&context,CB_SIZE,size,host_addr);
+	if (!host_addr || rsxInit(&context,CB_SIZE,size,host_addr) != 0 || !context)
+		return -1;
 
 	videoState state;
-	videoGetState(0,0,&state);
-
-	videoGetResolution(state.displayMode.resolution,&res);
+	memset(&state,0,sizeof(state));
+	if (videoGetState(0,0,&state) != 0 ||
+	    videoGetResolution(state.displayMode.resolution,&res) != 0 ||
+	    res.width == 0 || res.height == 0)
+		return -2;
 
 	videoConfiguration vconfig;
 	memset(&vconfig,0,sizeof(videoConfiguration));
@@ -104,10 +107,11 @@ void init_screen(void *host_addr,u32 size)
 	vconfig.format = VIDEO_BUFFER_FORMAT_XRGB;
 	vconfig.pitch = res.width*sizeof(u32);
 
+	if (videoConfigure(0,&vconfig,NULL,0) != 0)
+		return -3;
 	waitRSXIdle();
-
-	videoConfigure(0,&vconfig,NULL,0);
-	videoGetState(0,0,&state);
+	if (videoGetState(0,0,&state) != 0)
+		return -4;
 
 	gcmSetFlipMode(GCM_FLIP_VSYNC);
 
@@ -117,16 +121,25 @@ void init_screen(void *host_addr,u32 size)
 	color_pitch = display_width*sizeof(u32);
 	color_buffer[0] = (u32*)rsxMemalign(64,(display_height*color_pitch));
 	color_buffer[1] = (u32*)rsxMemalign(64,(display_height*color_pitch));
+	if (!color_buffer[0] || !color_buffer[1])
+		return -5;
 
-	rsxAddressToOffset(color_buffer[0],&color_offset[0]);
-	rsxAddressToOffset(color_buffer[1],&color_offset[1]);
+	if (rsxAddressToOffset(color_buffer[0],&color_offset[0]) != 0 ||
+	    rsxAddressToOffset(color_buffer[1],&color_offset[1]) != 0)
+		return -6;
 
 	gcmSetDisplayBuffer(0,color_offset[0],color_pitch,display_width,display_height);
 	gcmSetDisplayBuffer(1,color_offset[1],color_pitch,display_width,display_height);
 
 	depth_pitch = display_width*sizeof(u32);
 	depth_buffer = (u32*)rsxMemalign(64,(display_height*depth_pitch)*2);
-	rsxAddressToOffset(depth_buffer,&depth_offset);
+	if (!depth_buffer)
+		return -7;
+	if (rsxAddressToOffset(depth_buffer,&depth_offset) != 0)
+		return -8;
+
+	gcmResetFlipStatus();
+	return 0;
 }
 
 void waitflip()
