@@ -26,8 +26,10 @@ extern "C" {
 static void program_exit_callback(void) {
     audio_voice_shutdown();
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
-    gcmSetWaitFlip(context);
-    rsxFinish(context, 1);
+    if (context) {
+        gcmSetWaitFlip(context);
+        rsxFinish(context, 1);
+    }
     if (g_host_addr) {
         free(g_host_addr);
         g_host_addr = NULL;
@@ -112,13 +114,13 @@ int main(int argc, const char *argv[]) {
     if (!g_host_addr) return 1;
 
     game_init(&game);
-    /* init_screen takes the host-memory pointer and size through its own API. */
-    init_screen(g_host_addr, HOST_SIZE);
+    atexit(program_exit_callback);
+    /* Stop cleanly if RSX/video setup fails; never draw into uninitialized buffers. */
+    if (init_screen(g_host_addr, HOST_SIZE) != 0) return 1;
     /* Keep rendering even if pad initialization fails; input is simply disabled. */
     const s32 pad_init_result = ioPadInit(7);
     /* Audio is optional: keep the game running if audio initialization fails. */
     audio_voice_init();
-    atexit(program_exit_callback);
     sysUtilRegisterCallback(0, sysutil_exit_callback, NULL);
 
     setRenderTarget(curr_fb);
