@@ -1,12 +1,14 @@
-#ifndef RSXUTIL_H
-#define RSXUTIL_H
+#ifndef __RSXUTIL_H__
+#define __RSXUTIL_H__
 #include <ppu-types.h>
 #include <rsx/rsx.h>
+#define CB_SIZE 0x100000
 #define HOST_SIZE (32*1024*1024)
-#define CB_SIZE ( RSX_CONTEXT_SIZE )
 extern gcmContextData *context;
-extern u32 curr_fb, display_width, display_height, color_pitch, color_offset[2];
-void init_screen(void *host_addr, u32 size);
+extern u32 display_width, display_height, curr_fb;
+extern u32 color_pitch, color_offset[2];
 void setRenderTarget(u32 index);
+void init_screen(void *host_addr, u32 size);
+void waitflip(void);
 void flip(void);
 #endif
