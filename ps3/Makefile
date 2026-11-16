@@ -14,7 +14,7 @@ CONTENTID := UP0001-$(APPID)_00-0000000000000000
 CFLAGS = -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS = $(CFLAGS)
 LDFLAGS = $(MACHDEP) -Wl,-Map,$(notdir $@).map
-LIBS := -lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
+LIBS := -lrsx -lgcm_sys -lio -lsysutil -laudio -lrt -llv2 -lm
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 export OUTPUT := $(CURDIR)/$(TARGET)
