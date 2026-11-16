@@ -84,16 +84,19 @@ extern "C" void audio_voice_play(const float *stereo_samples, u32 frame_count) {
 extern "C" void audio_voice_update(void) {
     if (!g_port_started) return;
 
-    /* The audio server signals when a block has been consumed. */
+    /*
+     * One event is generated per consumed block. Drain every pending event so
+     * a slow video frame cannot leave the audio queue permanently behind.
+     */
     sys_event_t event;
-    if (sysEventQueueReceive(g_queue, &event, 0) != 0) return;
+    while (sysEventQueueReceive(g_queue, &event, 0) == 0) {
+        if (audioGetPortConfig(g_port, &g_config) != 0) break;
+        if (g_config.numBlocks == 0) break;
 
-    const u32 read_index = g_config.readIndex;
-    const u32 write_index = (read_index + 1) % (u32)g_config.numBlocks;
-    fill_block(write_index);
-
-    /* Refresh the read index before the next notification. */
-    audioGetPortConfig(g_port, &g_config);
+        const u32 write_index =
+            (g_config.readIndex + 1) % (u32)g_config.numBlocks;
+        fill_block(write_index);
+    }
 }
 
 extern "C" void audio_voice_shutdown(void) {
