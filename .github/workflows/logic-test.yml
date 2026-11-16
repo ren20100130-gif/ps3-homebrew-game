@@ -1,0 +1,19 @@
+name: Logic tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  native-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile game logic tests
+        run: |
+          cc -std=c99 -Wall -Wextra -Werror -pedantic \
+            -Isrc src/game_logic.c tests/test_game_logic.c \
+            -o game_logic_test
+      - name: Run game logic tests
+        run: ./game_logic_test
