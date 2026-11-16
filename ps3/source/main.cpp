@@ -106,15 +106,16 @@ static const char *action_label(GameAction action) {
 
 int main(int argc, const char *argv[]) {
     (void)argc; (void)argv;
-    padInfo padinfo;
-    padData paddata;
+    padInfo padinfo = {};
+    padData paddata = {};
     g_host_addr = memalign(1024 * 1024, HOST_SIZE);
     if (!g_host_addr) return 1;
 
     game_init(&game);
     /* init_screen takes the host-memory pointer and size through its own API. */
     init_screen(g_host_addr, HOST_SIZE);
-    ioPadInit(7);
+    /* Keep rendering even if pad initialization fails; input is simply disabled. */
+    const s32 pad_init_result = ioPadInit(7);
     /* Audio is optional: keep the game running if audio initialization fails. */
     audio_voice_init();
     atexit(program_exit_callback);
@@ -125,17 +126,22 @@ int main(int argc, const char *argv[]) {
         GameAction action = ACTION_NONE;
         sysUtilCheckCallback();
         audio_voice_update();
-        ioPadGetInfo(&padinfo);
-        for (int i = 0; i < MAX_PADS; ++i) {
-            if (!padinfo.status[i]) continue;
-            if (ioPadGetData(i, &paddata) == 0) {
+        if (pad_init_result == 0 && ioPadGetInfo(&padinfo) == 0) {
+            /* ioPadInit(7) supports seven ports; padInfo itself has a larger array. */
+            const u32 pad_count = padinfo.max < MAX_PORT_NUM ? padinfo.max : MAX_PORT_NUM;
+            for (u32 i = 0; i < pad_count; ++i) {
+                if (!padinfo.status[i]) continue;
+                memset(&paddata, 0, sizeof(paddata));
+                if (ioPadGetData(i, &paddata) != 0) continue;
+                /* PSL1GHT reports only changed input; len==0 means no new press. */
+                if (paddata.len == 0) continue;
                 if (paddata.BTN_START) action = ACTION_START;
                 else if (paddata.BTN_CIRCLE) action = ACTION_CIRCLE;
                 else if (paddata.BTN_CROSS) action = ACTION_CROSS;
                 else if (paddata.BTN_SQUARE) action = ACTION_SQUARE;
                 else if (paddata.BTN_TRIANGLE) action = ACTION_TRIANGLE;
+                break;
             }
-            break;
         }
         game_update(&game, action);
 
