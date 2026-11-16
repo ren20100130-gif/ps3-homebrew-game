@@ -1,6 +1,6 @@
 /*
  * PS3 runtime entry point based on the public PSL1GHT blitting sample.
- * Controller input is edge-triggered so holding a button counts only once.
+ * PSL1GHT pad data reports changed input; each reported press is handled once.
  * The current renderer is intentionally simple: colored screen feedback.
  */
 #include <stdio.h>
@@ -19,8 +19,6 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 
 static volatile int running = 1;
 static GameState game;
-static u16 previous_buttons = 0;
-
 extern "C" {
 static void program_exit_callback(void) {
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
@@ -33,17 +31,12 @@ static void sysutil_exit_callback(u64 status, u64 param, void *usrdata) {
 }
 }
 
-static GameAction read_new_button(const padData *data) {
-    const u16 now = data->BTN_START | data->BTN_CIRCLE | data->BTN_CROSS |
-                    data->BTN_SQUARE | data->BTN_TRIANGLE;
-    const u16 pressed = now & (u16)~previous_buttons;
-    previous_buttons = now;
-
-    if (pressed & data->BTN_START) return ACTION_START;
-    if (pressed & data->BTN_CIRCLE) return ACTION_CIRCLE;
-    if (pressed & data->BTN_CROSS) return ACTION_CROSS;
-    if (pressed & data->BTN_SQUARE) return ACTION_SQUARE;
-    if (pressed & data->BTN_TRIANGLE) return ACTION_TRIANGLE;
+static GameAction read_button(const padData *data) {
+    if (data->BTN_START) return ACTION_START;
+    if (data->BTN_CIRCLE) return ACTION_CIRCLE;
+    if (data->BTN_CROSS) return ACTION_CROSS;
+    if (data->BTN_SQUARE) return ACTION_SQUARE;
+    if (data->BTN_TRIANGLE) return ACTION_TRIANGLE;
     return ACTION_NONE;
 }
 
@@ -68,7 +61,7 @@ int main(int argc, const char *argv[]) {
         for (int i = 0; i < MAX_PADS; ++i) {
             if (!padinfo.status[i]) continue;
             if (ioPadGetData(i, &paddata) == 0)
-                action = read_new_button(&paddata);
+                action = read_button(&paddata);
             break;
         }
         game_update(&game, action);
