@@ -93,8 +93,14 @@ extern "C" void audio_voice_update(void) {
         if (audioGetPortConfig(g_port, &g_config) != 0) break;
         if (g_config.numBlocks == 0) break;
 
+        /*
+         * PSL1GHT exposes readIndex as the address of the current block
+         * counter, matching the upstream audiosync sample.
+         */
+        const u64 current_block =
+            *(volatile u64 *)(u64)g_config.readIndex;
         const u32 write_index =
-            (g_config.readIndex + 1) % (u32)g_config.numBlocks;
+            (u32)((current_block + 1) % (u64)g_config.numBlocks);
         fill_block(write_index);
     }
 }
