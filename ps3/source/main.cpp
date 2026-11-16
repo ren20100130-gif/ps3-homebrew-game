@@ -106,7 +106,7 @@ int main(int argc, const char *argv[]) {
 
     game_init(&game);
     /* init_screen takes the host-memory pointer and size through its own API. */
-    init_screen(host_addr, HOST_SIZE);
+    init_screen(host_addr);
     ioPadInit(7);
     atexit(program_exit_callback);
     sysUtilRegisterCallback(0, sysutil_exit_callback, NULL);
