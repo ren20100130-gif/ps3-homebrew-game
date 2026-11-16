@@ -1,6 +1,10 @@
 #ifndef GAME_LOGIC_H
 #define GAME_LOGIC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     ACTION_NONE = 0,
     ACTION_CIRCLE,
@@ -19,5 +23,9 @@ typedef struct {
 
 void game_init(GameState *state);
 void game_update(GameState *state, GameAction action);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
