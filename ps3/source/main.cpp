@@ -14,6 +14,7 @@
 #include <sysutil/sysutil.h>
 #include "rsxutil.h"
 #include "game_logic.h"
+#include "audio_voice.h"
 
 SYS_PROCESS_PARAM(1001, 0x100000);
 
@@ -22,6 +23,7 @@ static GameState game;
 
 extern "C" {
 static void program_exit_callback(void) {
+    audio_voice_shutdown();
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
     gcmSetWaitFlip(context);
     rsxFinish(context, 1);
@@ -108,6 +110,8 @@ int main(int argc, const char *argv[]) {
     /* init_screen takes the host-memory pointer and size through its own API. */
     init_screen(host_addr);
     ioPadInit(7);
+    /* Audio is optional: keep the game running if audio initialization fails. */
+    audio_voice_init();
     atexit(program_exit_callback);
     sysUtilRegisterCallback(0, sysutil_exit_callback, NULL);
 
@@ -115,6 +119,7 @@ int main(int argc, const char *argv[]) {
     while (running) {
         GameAction action = ACTION_NONE;
         sysUtilCheckCallback();
+        audio_voice_update();
         ioPadGetInfo(&padinfo);
         for (int i = 0; i < MAX_PADS; ++i) {
             if (!padinfo.status[i]) continue;
