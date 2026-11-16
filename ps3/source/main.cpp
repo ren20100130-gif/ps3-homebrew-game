@@ -21,13 +21,14 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 static volatile int running = 1;
 static GameState game;
 static void *g_host_addr = NULL;
+static volatile int screen_ready = 0;
 
 extern "C" {
 static void program_exit_callback(void) {
     audio_voice_shutdown();
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
     if (context) {
-        gcmSetWaitFlip(context);
+        if (screen_ready) gcmSetWaitFlip(context);
         rsxFinish(context, 1);
     }
     if (g_host_addr) {
@@ -117,6 +118,7 @@ int main(int argc, const char *argv[]) {
     atexit(program_exit_callback);
     /* Stop cleanly if RSX/video setup fails; never draw into uninitialized buffers. */
     if (init_screen(g_host_addr, HOST_SIZE) != 0) return 1;
+    screen_ready = 1;
     /* Keep rendering even if pad initialization fails; input is simply disabled. */
     const s32 pad_init_result = ioPadInit(7);
     /* Audio is optional: keep the game running if audio initialization fails. */
