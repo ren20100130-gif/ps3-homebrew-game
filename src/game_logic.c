@@ -16,7 +16,7 @@ void game_update(GameState *state, GameAction action) {
         return;
     }
 
-    state->last_action = action;
+    /* Ignore non-game inputs without changing the current display. */
     switch (action) {
         case ACTION_CIRCLE:
             state->display_text = "チンチン";
@@ -37,5 +37,7 @@ void game_update(GameState *state, GameAction action) {
         default:
             return;
     }
+
+    state->last_action = action;
     state->combo++;
 }
