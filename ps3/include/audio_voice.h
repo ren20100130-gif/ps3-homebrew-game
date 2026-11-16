@@ -7,7 +7,9 @@
 extern "C" {
 #endif
 
-/* Samples are interleaved stereo float PCM, 48 kHz, with values in [-1, 1]. */
+/* Samples are interleaved stereo float PCM, 48 kHz, with values in [-1, 1].
+ * The caller must keep the sample buffer alive until playback finishes.
+ */
 int audio_voice_init(void);
 void audio_voice_play(const float *stereo_samples, u32 frame_count);
 void audio_voice_update(void);
