@@ -20,6 +20,7 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 
 static volatile int running = 1;
 static GameState game;
+static void *g_host_addr = NULL;
 
 extern "C" {
 static void program_exit_callback(void) {
@@ -27,6 +28,10 @@ static void program_exit_callback(void) {
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
     gcmSetWaitFlip(context);
     rsxFinish(context, 1);
+    if (g_host_addr) {
+        free(g_host_addr);
+        g_host_addr = NULL;
+    }
 }
 static void sysutil_exit_callback(u64 status, u64 param, void *usrdata) {
     (void)param; (void)usrdata;
@@ -103,12 +108,12 @@ int main(int argc, const char *argv[]) {
     (void)argc; (void)argv;
     padInfo padinfo;
     padData paddata;
-    void *host_addr = memalign(1024 * 1024, HOST_SIZE);
-    if (!host_addr) return 1;
+    g_host_addr = memalign(1024 * 1024, HOST_SIZE);
+    if (!g_host_addr) return 1;
 
     game_init(&game);
     /* init_screen takes the host-memory pointer and size through its own API. */
-    init_screen(host_addr, HOST_SIZE);
+    init_screen(g_host_addr, HOST_SIZE);
     ioPadInit(7);
     /* Audio is optional: keep the game running if audio initialization fails. */
     audio_voice_init();
@@ -158,6 +163,5 @@ int main(int argc, const char *argv[]) {
 
         flip();
     }
-    free(host_addr);
     return 0;
 }
