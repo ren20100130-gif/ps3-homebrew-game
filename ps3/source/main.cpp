@@ -1,6 +1,7 @@
 /*
  * PS3 runtime entry point based on the public PSL1GHT blitting sample.
- * Video/pad lifecycle is implemented; text/audio are still separate tasks.
+ * Controller input is edge-triggered so holding a button counts only once.
+ * The current renderer is intentionally simple: colored screen feedback.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +19,7 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 
 static volatile int running = 1;
 static GameState game;
+static u16 previous_buttons = 0;
 
 extern "C" {
 static void program_exit_callback(void) {
@@ -29,6 +31,20 @@ static void sysutil_exit_callback(u64 status, u64 param, void *usrdata) {
     (void)param; (void)usrdata;
     if (status == SYSUTIL_EXIT_GAME) running = 0;
 }
+}
+
+static GameAction read_new_button(const padData *data) {
+    const u16 now = data->BTN_START | data->BTN_CIRCLE | data->BTN_CROSS |
+                    data->BTN_SQUARE | data->BTN_TRIANGLE;
+    const u16 pressed = now & (u16)~previous_buttons;
+    previous_buttons = now;
+
+    if (pressed & data->BTN_START) return ACTION_START;
+    if (pressed & data->BTN_CIRCLE) return ACTION_CIRCLE;
+    if (pressed & data->BTN_CROSS) return ACTION_CROSS;
+    if (pressed & data->BTN_SQUARE) return ACTION_SQUARE;
+    if (pressed & data->BTN_TRIANGLE) return ACTION_TRIANGLE;
+    return ACTION_NONE;
 }
 
 int main(int argc, const char *argv[]) {
@@ -51,17 +67,13 @@ int main(int argc, const char *argv[]) {
         ioPadGetInfo(&padinfo);
         for (int i = 0; i < MAX_PADS; ++i) {
             if (!padinfo.status[i]) continue;
-            ioPadGetData(i, &paddata);
-            if (paddata.BTN_START) action = ACTION_START;
-            else if (paddata.BTN_CIRCLE) action = ACTION_CIRCLE;
-            else if (paddata.BTN_CROSS) action = ACTION_CROSS;
-            else if (paddata.BTN_SQUARE) action = ACTION_SQUARE;
-            else if (paddata.BTN_TRIANGLE) action = ACTION_TRIANGLE;
+            if (ioPadGetData(i, &paddata) == 0)
+                action = read_new_button(&paddata);
             break;
         }
         game_update(&game, action);
 
-        /* Distinct background per input proves controller events reach game logic. */
+        /* Temporary visual feedback until the text renderer is added. */
         u32 clear = 0x101820;
         switch (game.last_action) {
             case ACTION_CIRCLE: clear = 0x402040; break;
