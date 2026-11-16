@@ -136,11 +136,12 @@ int main(int argc, const char *argv[]) {
             case ACTION_TRIANGLE: clear = 0x503020; break;
             default: break;
         }
-        rsxSetClearColor(context, clear);
-        rsxSetClearDepthStencil(context, 0xffff);
-        rsxClearSurface(context, GCM_CLEAR_R | GCM_CLEAR_G |
-                         GCM_CLEAR_B | GCM_CLEAR_A |
-                         GCM_CLEAR_S | GCM_CLEAR_Z);
+        /* Software-clear the back buffer before drawing the UI. */
+        u32 *fb = color_buffer[curr_fb];
+        const u32 pitch_pixels = color_pitch / 4;
+        for (u32 y=0; y<display_height; ++y)
+            for (u32 x=0; x<display_width; ++x)
+                fb[y*pitch_pixels+x] = 0xff000000 | clear;
 
         draw_text("POOP GAME", 40, 40, 5, 0xffffffff);
         draw_text("PRESS A BUTTON", 40, 100, 2, 0xffffffff);
