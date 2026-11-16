@@ -89,10 +89,10 @@ static void draw_text(const char *text, int x, int y, int scale, u32 color) {
 
 static const char *action_label(GameAction action) {
     switch (action) {
-        case ACTION_CIRCLE: return "CIRCLE";
-        case ACTION_CROSS: return "CROSS";
-        case ACTION_SQUARE: return "SQUARE";
-        case ACTION_TRIANGLE: return "TRIANGLE";
+        case ACTION_CIRCLE: return "CHINCHIN";
+        case ACTION_CROSS: return "NIGANIGA";
+        case ACTION_SQUARE: return "POOP";
+        case ACTION_TRIANGLE: return "GEI";
         default: return "READY";
     }
 }
@@ -146,8 +146,9 @@ int main(int argc, const char *argv[]) {
         draw_text("POOP GAME", 40, 40, 5, 0xffffffff);
         draw_text("PRESS A BUTTON", 40, 100, 2, 0xffffffff);
         draw_text(action_label(game.last_action), 40, 150, 4, 0xffff80ff);
-        draw_text("CIRCLE CROSS SQUARE TRIANGLE", 40, 220, 2, 0xffffffff);
-        draw_text("START RESET", 40, 260, 2, 0xffffffff);
+        draw_text("O CHINCHIN  X NIGANIGA", 40, 220, 2, 0xffffffff);
+        draw_text("SQUARE POOP  TRIANGLE GEI", 40, 250, 2, 0xffffffff);
+        draw_text("START RESET", 40, 280, 2, 0xffffffff);
 
         flip();
     }
