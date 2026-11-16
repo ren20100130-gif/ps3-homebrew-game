@@ -1,12 +1,12 @@
 /*
  * PS3 runtime entry point based on the public PSL1GHT blitting sample.
- * PSL1GHT pad data reports changed input; each reported press is handled once.
- * The current renderer is intentionally simple: colored screen feedback.
+ * Text is drawn into the framebuffer with a tiny built-in 5x7 ASCII font.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <string.h>
 #include <ppu-types.h>
 #include <sys/process.h>
 #include <io/pad.h>
@@ -19,6 +19,7 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 
 static volatile int running = 1;
 static GameState game;
+
 extern "C" {
 static void program_exit_callback(void) {
     sysUtilUnregisterCallback(SYSUTIL_EVENT_SLOT0);
@@ -31,13 +32,69 @@ static void sysutil_exit_callback(u64 status, u64 param, void *usrdata) {
 }
 }
 
-static GameAction read_button(const padData *data) {
-    if (data->BTN_START) return ACTION_START;
-    if (data->BTN_CIRCLE) return ACTION_CIRCLE;
-    if (data->BTN_CROSS) return ACTION_CROSS;
-    if (data->BTN_SQUARE) return ACTION_SQUARE;
-    if (data->BTN_TRIANGLE) return ACTION_TRIANGLE;
-    return ACTION_NONE;
+/* 5x7 glyphs for the ASCII characters used by the UI. */
+static const u8 font[26][7] = {
+ {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},
+ {14,17,16,16,16,17,14},{30,17,17,17,17,17,30},
+ {31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
+ {14,17,16,23,17,17,15},{17,17,17,31,17,17,17},
+ {14,4,4,4,4,4,14},{7,2,2,2,18,18,12},
+ {17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
+ {17,27,21,21,17,17,17},{17,25,21,19,17,17,17},
+ {14,17,17,17,17,17,14},{30,17,17,30,16,16,16},
+ {14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
+ {15,16,16,14,1,1,30},{31,4,4,4,4,4,4},
+ {17,17,17,17,17,17,14},{17,17,17,17,17,10,4},
+ {17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
+ {17,17,10,4,4,4,4},{31,1,2,4,8,16,31}
+};
+
+static const u8 digits[10][7] = {
+ {14,17,19,21,25,17,14},{4,12,4,4,4,4,14},
+ {14,17,1,2,4,8,31},{30,1,1,14,1,1,30},
+ {2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
+ {14,16,16,30,17,17,14},{31,1,2,4,8,8,8},
+ {14,17,17,14,17,17,14},{14,17,17,15,1,1,14}
+};
+
+static const u8 *glyph(char c) {
+    if (c >= 'A' && c <= 'Z') return font[c-'A'];
+    if (c >= '0' && c <= '9') return digits[c-'0'];
+    return NULL;
+}
+
+static void draw_text(const char *text, int x, int y, int scale, u32 color) {
+    const int start_x = x;
+    u32 *fb = color_buffer[curr_fb];
+    for (; *text; ++text) {
+        if (*text == '\n') { x = start_x; y += 9 * scale; continue; }
+        const u8 *g = glyph(*text);
+        if (g) {
+            for (int row=0; row<7; ++row) {
+                for (int col=0; col<5; ++col) {
+                    if (!(g[row] & (1u << (4-col)))) continue;
+                    for (int sy=0; sy<scale; ++sy) {
+                        for (int sx=0; sx<scale; ++sx) {
+                            const int px=x+col*scale+sx, py=y+row*scale+sy;
+                            if (px>=0 && py>=0 && px<(int)display_width && py<(int)display_height)
+                                fb[py*(color_pitch/4)+px]=color;
+                        }
+                    }
+                }
+            }
+        }
+        x += 6 * scale;
+    }
+}
+
+static const char *action_label(GameAction action) {
+    switch (action) {
+        case ACTION_CIRCLE: return "CIRCLE";
+        case ACTION_CROSS: return "CROSS";
+        case ACTION_SQUARE: return "SQUARE";
+        case ACTION_TRIANGLE: return "TRIANGLE";
+        default: return "READY";
+    }
 }
 
 int main(int argc, const char *argv[]) {
@@ -60,13 +117,17 @@ int main(int argc, const char *argv[]) {
         ioPadGetInfo(&padinfo);
         for (int i = 0; i < MAX_PADS; ++i) {
             if (!padinfo.status[i]) continue;
-            if (ioPadGetData(i, &paddata) == 0)
-                action = read_button(&paddata);
+            if (ioPadGetData(i, &paddata) == 0) {
+                if (paddata.BTN_START) action = ACTION_START;
+                else if (paddata.BTN_CIRCLE) action = ACTION_CIRCLE;
+                else if (paddata.BTN_CROSS) action = ACTION_CROSS;
+                else if (paddata.BTN_SQUARE) action = ACTION_SQUARE;
+                else if (paddata.BTN_TRIANGLE) action = ACTION_TRIANGLE;
+            }
             break;
         }
         game_update(&game, action);
 
-        /* Temporary visual feedback until the text renderer is added. */
         u32 clear = 0x101820;
         switch (game.last_action) {
             case ACTION_CIRCLE: clear = 0x402040; break;
@@ -80,6 +141,13 @@ int main(int argc, const char *argv[]) {
         rsxClearSurface(context, GCM_CLEAR_R | GCM_CLEAR_G |
                          GCM_CLEAR_B | GCM_CLEAR_A |
                          GCM_CLEAR_S | GCM_CLEAR_Z);
+
+        draw_text("POOP GAME", 40, 40, 5, 0xffffffff);
+        draw_text("PRESS A BUTTON", 40, 100, 2, 0xffffffff);
+        draw_text(action_label(game.last_action), 40, 150, 4, 0xffff80ff);
+        draw_text("CIRCLE CROSS SQUARE TRIANGLE", 40, 220, 2, 0xffffffff);
+        draw_text("START RESET", 40, 260, 2, 0xffffffff);
+
         flip();
     }
     free(host_addr);
